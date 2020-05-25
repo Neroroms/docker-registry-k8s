@@ -1,0 +1,1 @@
+kubectl create secret --namespace=registry generic docker-registry-secret --from-file=domain.crt --from-file=domain.key

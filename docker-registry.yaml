@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: docker-registry
+  namespace: registry
+spec:
+  selector:
+    matchLabels:
+      app: docker-registry
+  serviceName: docker-registry
+  template:
+    metadata:
+      labels:
+        app: docker-registry
+    spec:
+      containers:
+        - name: docker-registry
+          image: registry:2
+          ports:
+            - containerPort: 443
+              name: registry-port
+          volumeMounts:
+            - name: docker-registry
+              mountPath: /mnt/registry
+            - name: docker-registry-secret
+              mountPath: /certs
+            - name: docker-registry-auth
+              mountPath: /auth
+            # - name: docker-registry-config
+            #   mountPath: /config
+          env:
+            - name: REGISTRY_HTTP_ADDR
+              value: "0.0.0.0:443"
+            - name: REGISTRY_HTTP_TLS_CERTIFICATE
+              value: "/certs/domain.crt"
+            - name: REGISTRY_HTTP_TLS_KEY
+              value: "/certs/domain.key"
+            - name: REGISTRY_AUTH_HTPASSWD_PATH
+              value: "/auth/htpasswd"
+            - name: REGISTRY_AUTH
+              value: "htpasswd"
+            - name: REGISTRY_AUTH_HTPASSWD_REALM
+              value: "Registry Realm"
+      volumes:
+        # - name: docker-registry-config
+        #   configMap:
+        #     name: docker-registry-config
+        #     items:
+        #       - key: daemon.json
+        #         path: daemon.json
+        - name: docker-registry-secret
+          secret:
+            secretName: docker-registry-secret
+            items:
+              - key: domain.crt
+                path: domain.crt
+              - key: domain.key
+                path: domain.key
+        - name: docker-registry-auth
+          secret:
+            secretName: docker-registry-auth
+            items:
+              - key: htpasswd
+                path: htpasswd
+  volumeClaimTemplates:
+    - metadata:
+        name: docker-registry
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: "gp2"
+        resources:
+          requests:
+            storage: 10Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docker-registry
+  namespace: registry
+  labels:
+    app: docker-registry
+spec:
+  ports:
+    - name: registry-port
+      port: 443
+  type: LoadBalancer
+  selector:
+    app: docker-registry 

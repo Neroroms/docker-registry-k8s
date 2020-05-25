@@ -1,0 +1,1 @@
+kubectl create secret --namespace=registry generic docker-registry-auth --from-file=htpasswd
